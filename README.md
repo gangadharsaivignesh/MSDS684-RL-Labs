@@ -1,55 +1,39 @@
-# MSDS 684 — Reinforcement Learning
-## Lab 1: Multi-Armed Bandits & Gymnasium Environments
+# MSDS 684 — Reinforcement Learning Labs
 
-### Overview
-This lab implements and compares exploration strategies for the multi-armed bandit problem, and explores standard Gymnasium environments using a random policy baseline.
+Lab assignments for **MSDS 684: Reinforcement Learning**, organized by week. Each lab implements a core RL algorithm from Sutton & Barto and explores its behavior on a benchmark environment.
 
-**Topics covered:**
-- Custom 10-armed Gaussian bandit environment (Gymnasium API)
-- ε-Greedy agent (ε ∈ {0.01, 0.1, 0.2})
-- UCB agent (c ∈ {0.5, 1.0, 2.0})
-- 2000 time steps × 1000 independent runs
-- FrozenLake-v1 and Taxi-v3 environment exploration
-- Random policy baseline and MDP tuple mapping
+## Repository Structure
 
-### Setup
+```
+MSDS684-RL-Labs/
+├── README.md              ← this file
+├── requirements.txt       ← shared Python dependencies
+├── Week1/                 ← Lab 1: Multi-Armed Bandits
+├── Week2/                 ← Lab 2: MDPs & Dynamic Programming
+└── Week3/                 ← Lab 3: Monte Carlo Control on Blackjack
+```
+
+## Setup
 
 **Requirements:** Python 3.9+
 
-Install dependencies:
+Install all dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### Running the Notebook
+## Labs
 
-Open `Lab1.ipynb` in VS Code or JupyterLab and run all cells in order.
+| Week | Topic | S&B Chapter |
+|------|-------|-------------|
+| **Week 1** | ε-Greedy and UCB on a 10-armed Gaussian bandit; FrozenLake & Taxi exploration | Ch. 2 |
+| **Week 2** | Policy iteration & value iteration on FrozenLake | Ch. 3–4 |
+| **Week 3** | First-visit Monte Carlo control on Blackjack-v1 (ε-soft policies) | Ch. 5 |
 
-Expected runtime: ~60 seconds for the bandit experiments (1000 runs × 2000 steps).
+Each `WeekN/` folder contains its own notebook (`LabN.ipynb`) with the full implementation, experiments, and analysis. Open in VS Code or JupyterLab and run all cells in order.
 
-### Files
+## References
 
-| File | Description |
-|------|-------------|
-| `Lab1.ipynb` | Main notebook — all code, results, and analysis |
-| `requirements.txt` | Python dependencies |
-
-### Results Summary
-
-| Algorithm | Final Avg Reward | % Optimal Action |
-|-----------|-----------------|-----------------|
-| ε-Greedy (ε=0.01) | 1.389 | 72.4% |
-| ε-Greedy (ε=0.10) | 1.357 | 82.8% |
-| ε-Greedy (ε=0.20) | 1.199 | 75.0% |
-| UCB (c=0.5) | 1.483 | 87.8% |
-| UCB (c=1.0) | 1.507 | 95.7% |
-| UCB (c=2.0) | 1.484 | 90.0% |
-
-| Environment | Random Success Rate | Avg Reward |
-|-------------|-------------------|------------|
-| FrozenLake-v1 | 0.8% | 0.008 |
-| Taxi-v3 | 0.0% | -767.01 |
-
-### References
-- Sutton, R.S. & Barto, A.G. (2018). *Reinforcement Learning: An Introduction* (2nd ed.). Chapters 1–2.
+- Sutton, R.S. & Barto, A.G. (2018). *Reinforcement Learning: An Introduction* (2nd ed.). MIT Press.
 - Gymnasium documentation: https://gymnasium.farama.org/
