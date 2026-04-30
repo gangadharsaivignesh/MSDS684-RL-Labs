@@ -1,0 +1,8 @@
+# Lab report drafts — kept out of git so the user can paraphrase locally
+Gangadhar_Sai_Vignesh_Lab3.docx
+Gangadhar_Sai_Vignesh_Lab3.pdf
+*.docx
+*.pdf
+
+# Notebook backup
+Lab3.ipynb.bak
