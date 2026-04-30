@@ -2,8 +2,15 @@
 Gangadhar_Sai_Vignesh_Lab3.docx
 Gangadhar_Sai_Vignesh_Lab3.pdf
 build_doc.py
+build_notebook.py
 *.docx
 *.pdf
+
+# Generated artifacts — the notebook embeds plot outputs inline, so standalone
+# image and array files don't need to be tracked. They are regenerated locally
+# whenever Lab3.ipynb is executed.
+*.png
+*.npz
 
 # Notebook backup
 Lab3.ipynb.bak
