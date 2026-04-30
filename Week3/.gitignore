@@ -1,6 +1,7 @@
-# Lab report drafts — kept out of git so the user can paraphrase locally
+# Lab report drafts and source — kept out of git so the user can paraphrase locally
 Gangadhar_Sai_Vignesh_Lab3.docx
 Gangadhar_Sai_Vignesh_Lab3.pdf
+build_doc.py
 *.docx
 *.pdf
 
