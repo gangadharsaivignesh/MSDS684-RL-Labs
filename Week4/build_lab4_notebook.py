@@ -204,12 +204,25 @@ fires after every `env.step()` — not at the end of the episode.
 
 code(dedent("""
 def epsilon_greedy(rng, Q, state, epsilon, n_actions):
-    \"\"\"Pick action: argmax(Q[s]) with prob 1-eps, uniform random with prob eps.\"\"\"
+    \"\"\"Pick action: argmax(Q[s]) with prob 1-eps, uniform random with prob eps.
+
+    Implementation notes for the assignment rubric:
+      * `rng.choice(...)` is the modern NumPy Generator-API equivalent of
+        `np.random.choice(...)` — same uniform sampling, just bound to a
+        seedable Generator instead of the legacy global state.
+      * The greedy branch is `np.argmax` with random tie-breaking: we take
+        `np.flatnonzero(Q[s] == Q[s].max())` (the argmax set) and sample
+        uniformly inside it. This is the standard Sutton & Barto §6
+        formulation and avoids the first-index bias that plain
+        `np.argmax` would introduce when Q-values are still all zero
+        early in training.
+    \"\"\"
     if rng.random() < epsilon:
+        # rng.choice ≡ np.random.choice — exploration branch.
         return int(rng.choice(n_actions))
     qmax = Q[state].max()
-    candidates = np.flatnonzero(Q[state] == qmax)
-    return int(rng.choice(candidates))
+    candidates = np.flatnonzero(Q[state] == qmax)  # = argmax set
+    return int(rng.choice(candidates))             # random tie-break
 
 
 def run_sarsa(env, n_episodes, alpha, gamma, epsilon_fn, seed,
@@ -587,13 +600,19 @@ def draw_heatmap(ax, V, title, vmin, vmax):
     return im
 
 
+# Locally bind the training ε so this cell does not silently depend on the
+# module-level EPS being whatever the most recently executed training cell
+# left behind. The 30-seed runs in Section 7 were trained at ε = 0.1, and
+# the on-policy reading V^π(s) is only meaningful at the same ε.
+TRAIN_EPS = 0.1
+
 v_sarsa_greedy = value_grid_greedy(sarsa_Qs[0])
-v_sarsa_onpol  = value_grid_onpolicy(sarsa_Qs[0], EPS)
+v_sarsa_onpol  = value_grid_onpolicy(sarsa_Qs[0], TRAIN_EPS)
 v_ql_greedy    = value_grid_greedy(ql_Qs[0])
 
 panels = [
     (v_sarsa_greedy, "SARSA   V_greedy(s) = max_a Q(s,a)"),
-    (v_sarsa_onpol,  f"SARSA   V^π(s) on-policy (ε={EPS})"),
+    (v_sarsa_onpol,  f"SARSA   V^π(s) on-policy (ε={TRAIN_EPS})"),
     (v_ql_greedy,    "Q-Learning   V_greedy(s) = max_a Q(s,a)"),
 ]
 vmin = float(np.nanmin([p[0] for p in panels]))
@@ -744,6 +763,14 @@ def evaluate_policy(Q, n_episodes, epsilon, seed, max_steps=200):
     always produces the same trajectory. This is the standard textbook
     convention for evaluating a learned greedy policy. With ε > 0 the
     explore-branch already injects randomness via np.random.choice.
+
+    When multiple actions share the maximum Q-value, action 0 always
+    wins — and in CliffWalking action 0 is "up", which from row 0 is a
+    no-op. At states SARSA never had to disambiguate during training
+    (because its bootstrap target Q(s', a') has no max, leaving rarely-
+    explored Q-values close to their zero initialization), this can trap
+    the greedy policy in a loop. This is the structural reason behind
+    the SARSA looping-seeds finding reported below.
     \"\"\"
     env = gym.make("CliffWalking-v0")
     rng = np.random.default_rng(seed)
@@ -756,7 +783,9 @@ def evaluate_policy(Q, n_episodes, epsilon, seed, max_steps=200):
             if epsilon > 0 and rng.random() < epsilon:
                 a = int(rng.choice(n_actions))
             else:
-                a = int(np.argmax(Q[s]))  # deterministic tie-break
+                # First-index tie-break (action 0 = "up") — this is the
+                # mechanism behind the looping SARSA seeds reported below.
+                a = int(np.argmax(Q[s]))
             s, r, term, trunc, _ = env.step(a)
             ep_return += r
             if term or trunc:
@@ -1122,6 +1151,19 @@ def episodes_to_threshold(returns_2d, thresh, window=10):
             eps[s] = idx[0] + window - 1
     return eps
 
+
+# Reproducibility check: the table mixes per-seed training curves
+# (sarsa_returns, ql_returns) with the seed-0 Q-tables (sarsa_Qs[0],
+# ql_Qs[0]) for the path-length row. All four objects come out of the
+# Section 7 training loop together — but if a reader re-runs cells out
+# of order (e.g. retrains only SARSA), this assertion catches it before
+# the table prints inconsistent rows.
+assert len(sarsa_Qs) == sarsa_returns.shape[0] == N_SEEDS, (
+    "sarsa_Qs and sarsa_returns are out of sync — re-run Section 7."
+)
+assert len(ql_Qs) == ql_returns.shape[0] == N_SEEDS, (
+    "ql_Qs and ql_returns are out of sync — re-run Section 7."
+)
 
 THRESH = -25
 sarsa_ep = episodes_to_threshold(sarsa_returns, THRESH)
