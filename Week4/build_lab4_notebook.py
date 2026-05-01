@@ -737,9 +737,14 @@ md(dedent("""
 code(dedent("""
 def evaluate_policy(Q, n_episodes, epsilon, seed, max_steps=200):
     \"\"\"Roll out an epsilon-greedy policy on a fixed Q-table and return
-    the array of episode returns. Reuses the same epsilon_greedy helper
-    used during training so behavior-policy evaluation matches training
-    behavior exactly.\"\"\"
+    the array of episode returns.
+
+    Tie-break note: at ε = 0 the policy is purely greedy and we use a
+    deterministic np.argmax (first-index tie-break) so the same Q-table
+    always produces the same trajectory. This is the standard textbook
+    convention for evaluating a learned greedy policy. With ε > 0 the
+    explore-branch already injects randomness via np.random.choice.
+    \"\"\"
     env = gym.make("CliffWalking-v0")
     rng = np.random.default_rng(seed)
     n_actions = Q.shape[1]
@@ -748,7 +753,10 @@ def evaluate_policy(Q, n_episodes, epsilon, seed, max_steps=200):
         s, _ = env.reset(seed=int(seed * 7_919 + ep))
         ep_return = 0.0
         for _ in range(max_steps):
-            a = epsilon_greedy(rng, Q, s, epsilon, n_actions)
+            if epsilon > 0 and rng.random() < epsilon:
+                a = int(rng.choice(n_actions))
+            else:
+                a = int(np.argmax(Q[s]))  # deterministic tie-break
             s, r, term, trunc, _ = env.step(a)
             ep_return += r
             if term or trunc:
@@ -828,17 +836,36 @@ plt.show()
 """), tag="greedy-vs-behavior-plot")
 
 md(dedent(r"""
-> **Observation — something is off with the SARSA greedy numbers.**
-> Q-Learning's greedy policy beats its behavior policy by a wide margin,
-> exactly as expected: zero $\varepsilon$ means zero cliff-falls, and
-> the 13-step optimal path is what the $\max$-target was designed to
-> find. But SARSA's greedy mean is *lower* than its behavior mean —
-> $\sim -50$ versus $\sim -36$. That should not happen: a deterministic
-> argmax over the learned Q should be at least as good as the noisy
-> $\varepsilon$-greedy policy that produced Q in the first place.
+> **Observation — the surprising shape of the SARSA distribution.**
+> The bar chart hides a finding I did not predict. Q-Learning's greedy
+> policy returns exactly $-13$ on every one of the 30 seeds (std
+> $= 0$); its $\max$-target sharpens Q aggressively enough that
+> $\arg\max_a Q(s,a)$ unambiguously points at the optimal action in
+> every state. Q-Learning's behavior policy ($\varepsilon = 0.1$) is
+> dramatically worse (~$-50$) — exactly the cliff-fall effect.
 >
-> Something is wrong with how we are pulling the greedy policy out of
-> the Q-table. We will investigate in the next iteration.
+> SARSA's *typical* seed gives a clean $-17$ greedy policy (the safe
+> path), and the *median* across seeds reports that. But the *mean*
+> tells a different story because **6 of 30 SARSA seeds produce greedy
+> policies that loop forever and time out at $-200$**. The reason is
+> structural: SARSA's bootstrap target $Q(S', A')$ does not contain a
+> $\max$, so Q-values for rarely-explored or no-op actions can stay
+> near their zero initialization. When `np.argmax` then breaks ties by
+> first index (action 0 = "up"), the agent in those seeds picks a
+> no-op action at some state and never escapes. SARSA training was
+> only well-defined because the $\varepsilon$-greedy *behavior* policy
+> randomized over those tied actions; pulling the greedy policy out of
+> the learned Q exposes states where SARSA never had to disambiguate.
+>
+> This is *exactly* the on-policy / off-policy distinction, made even
+> sharper than I expected: Q-Learning approximates $q_*$ — its argmax
+> is the right policy by construction. SARSA approximates $q^\pi$ for
+> the executed $\varepsilon$-greedy $\pi$ — its argmax is *not* a
+> policy SARSA was trained to evaluate or optimise. The greedy-policy
+> performance you can extract from a SARSA Q-table is therefore a
+> by-product of training, not a guarantee. (Sutton & Barto §6.5 makes
+> the analytic version of this point in passing; running the
+> experiment surfaces it numerically.)
 """), tag="observation-greedy-vs-behavior")
 
 # ── Section 12: alpha sweep ──────────────────────────────────────────────────
@@ -1161,22 +1188,34 @@ own exploratory behavior; Q-Learning's tracks the value of greedy
 behavior, and that mismatch makes its training-time returns worse even
 though its asymptotic policy is shorter (13 vs 17 steps).
 
-**2. Greedy-policy evaluation looks anomalous for SARSA.**
-Section 11.5 evaluates the *same* learned Q-tables under $\varepsilon = 0$
-(pure greedy) versus $\varepsilon = 0.1$ (the behavior policy). Q-Learning
-behaves as expected — its greedy policy beats its behavior policy by a
-wide margin. SARSA's *greedy* mean comes out *worse* than its behavior
-mean, which contradicts the textbook prediction. We flag this as an
-open issue to investigate; it likely points to a problem in how the
-greedy policy is being extracted from the learned Q-table rather than
-to anything about the algorithms themselves.
+**2. The split *flips* under greedy evaluation — and reveals a deeper
+asymmetry.** Section 11.5 shows the opposite ranking once you stop
+exploring. Q-Learning's greedy policy returns *exactly* $-13$ on every
+seed (std $= 0$); its $\max$-target sharpens Q so aggressively that
+$\arg\max$ is unambiguous everywhere. SARSA's greedy policy returns
+$-17$ on the typical (median) seed — but its *mean* is much worse
+(~$-54$) because **6 of 30 SARSA seeds produce greedy policies that
+loop forever** at evaluation time. The mechanism: SARSA's bootstrap
+$Q(S', A')$ does not contain a $\max$, so Q-values for rarely-explored
+or no-op actions can stay close to their zero initialization. Tie-breaks
+in `np.argmax` (first index = "up") then pick a no-op action at some
+critical state and the agent never escapes. SARSA training only worked
+because its $\varepsilon$-greedy *behavior* policy randomized those
+ties; the deterministic greedy policy is not the policy SARSA was
+trained to optimise. This is the cleanest possible numerical statement
+of "Q-Learning approximates $q_*$; SARSA approximates $q^\pi$"
+(Sutton & Barto §6.5).
 
-**3. Variance across seeds — training-time only.**
-SARSA's training-time std (~$11$) is slightly *larger* than Q-Learning's
-(~$9$) — opposite to the naïve "safer policy → lower variance"
-intuition, because SARSA's bootstrap target is itself noisy (it depends
-on the explored next action). Cliff-fall *counts* during training
-strongly favor SARSA so the safety story is correct in absolute terms.
+**3. Variance across seeds is informative on two scales.**
+*Training-time variance:* SARSA's std (~$11$) is slightly *larger* than
+Q-Learning's (~$9$) — opposite to the naïve "safer policy → lower
+variance" intuition, because SARSA's bootstrap target is itself noisy
+(it depends on the explored next action). *Greedy-evaluation variance:*
+the asymmetry is enormous — Q-Learning std $= 0$, SARSA std $\approx 73$
+— driven entirely by the 6 looping seeds. Cliff-fall *counts* during
+training still favor SARSA enormously ($36$ vs $126$ per seed) so the
+safety story is correct in absolute terms; it just doesn't show up in
+final-return variance.
 
 **4. The split is robust to $\alpha$.** Across $\alpha \in
 \{0.05, 0.1, 0.25, 0.5, 0.9\}$, SARSA wins the training-time return
