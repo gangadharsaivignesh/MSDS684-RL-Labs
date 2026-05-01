@@ -1046,14 +1046,45 @@ plt.tight_layout()
 plt.show()
 """), tag="eps-decay-plot")
 
-md(dedent("""
-> **Observation.** Decaying $\\varepsilon$ closes the SARSA / Q-Learning
-> gap — late in training the behavior policy *is* greedy, so SARSA's
-> safety bonus disappears. Constant $\\varepsilon=0.2$ widens the gap
-> (more cliff-falls when Q-Learning explores). This is a clean
-> demonstration of why off-policy methods become attractive once
-> exploration is annealed: the on-policy *value* SARSA reports is for
-> the noisy policy, not the greedy one.
+md(dedent(r"""
+> **Observation — quantitative.** Final-50-episode mean returns across the
+> four schedules (30 seeds each):
+>
+> | Schedule       | Final $\varepsilon$ | SARSA   | Q-Learning | Gap (SARSA − QL) |
+> |----------------|---------------------|---------|------------|------------------|
+> | `const-0.1`    | 0.100               | $-28.9$ | $-46.3$    | $+17.4$          |
+> | `const-0.2`    | 0.200               | $-42.3$ | $-106.9$   | $+64.6$          |
+> | `linear-decay` | 0.011               | $-20.9$ | $-23.8$    | $+2.9$           |
+> | `exp-decay`    | 0.010               | $-17.8$ | $-16.4$    | $-1.4$           |
+>
+> **1. Doubling $\varepsilon$ roughly quadruples the gap.** Going from
+> `const-0.1` to `const-0.2` widens it from $+17.4$ to $+64.6$:
+> Q-Learning's mean return collapses to $-106.9$ because every cliff-fall
+> costs $-100$ and the higher exploration rate roughly doubles the per-episode
+> fall probability. SARSA only loses ~13 reward over the same change because
+> its bootstrap *anticipates* the noise — its target shifts toward the
+> safer interior of the grid.
+>
+> **2. `exp-decay` closes the gap by ~episode 270 and slightly *flips* it.**
+> By the time $\varepsilon$ has hit its $0.01$ floor (around episode 270 at a
+> $0.99$-per-episode decay), the behavior policy is essentially greedy.
+> Q-Learning then gets to play its 13-step optimal path and posts $-16.4$,
+> beating SARSA's 17-step safe path ($-17.8$) by almost exactly the
+> 4-step path-length difference. The gap doesn't just close — it inverts
+> by the path-length advantage Q-Learning has been holding the whole time.
+>
+> **3. `linear-decay` closes much later (~ep 479)** because $\varepsilon$
+> sits above $0.05$ until episode ~450. Same destination as `exp-decay`,
+> but Q-Learning pays exploration cost for far longer; final gap is only
+> barely closed at $+2.9$.
+>
+> **Mechanistic explanation.** Q-Learning's bootstrap target $\max_{a'}
+> Q(S', a')$ is *already* greedy — its training-time disadvantage was
+> never about a wrong target, it was about the $\varepsilon$-greedy
+> *behavior* policy actually executing those moves and falling in.
+> As $\varepsilon \to 0$, behavior aligns with target and the disadvantage
+> vanishes. SARSA, in contrast, tracks $Q^\pi$ for whatever $\pi$ is being
+> played — its return follows $\varepsilon$ by construction.
 """), tag="observation-eps")
 
 # ── Section 14: Comparison Table ────────────────────────────────────────────
