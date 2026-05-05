@@ -1,0 +1,13 @@
+name: msds684-rl
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.10
+  - numpy>=1.24.0
+  - matplotlib>=3.7.0
+  - jupyter>=1.0.0
+  - ipykernel>=6.0.0
+  - pip
+  - pip:
+    - gymnasium>=0.26.0
