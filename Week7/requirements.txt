@@ -1,0 +1,19 @@
+# Lab 7 — Dyna-Q on Taxi-v3
+# Python 3.9+
+# Install with: pip install -r requirements.txt
+
+# Core RL environment
+gymnasium>=0.29
+
+# Numerical / scientific
+numpy>=1.24,<2.0
+scipy>=1.10
+
+# Plotting
+matplotlib>=3.7
+
+# Deep learning (optional — needed for experiments 04 only)
+torch>=2.0
+
+# Testing
+pytest>=7.0
