@@ -1,0 +1,12 @@
+# Tested on Python 3.9. Install with:
+# pip install -r requirements.txt
+
+torch==2.8.0
+gymnasium==1.1.1
+numpy==2.0.2
+matplotlib
+scipy
+pandas
+box2d-py>=2.3.5    # LunarLanderContinuous physics engine
+jupyter
+nbconvert
