@@ -1,0 +1,13 @@
+# Lab 8 — Algorithm Comparison
+# MSDS 684 · Reinforcement Learning
+# Install: pip install -r requirements.txt
+#
+# Note: gymnasium[box2d] requires swig.
+#   macOS:         brew install swig
+#   Ubuntu/Debian: sudo apt-get install swig
+#   Windows:       pip install swig
+
+gymnasium[box2d]>=0.26.0
+torch>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
